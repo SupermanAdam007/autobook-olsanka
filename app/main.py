@@ -20,5 +20,5 @@ if __name__ == '__main__':
     browser = Browser(display_visible=True, display_size=(1000, 900))
     flow = Flow(browser)
     flow.login_and_find_next_free_and_book()
-    #time.sleep(5)
-    #browser.close()
+    time.sleep(5)
+    browser.close()
