@@ -20,7 +20,7 @@ class Flow:
         self.olsanka_instance.login()
 
         self.olsanka_instance.switch_view_to_badminton()
-        #time.sleep(1)
+        time.sleep(3)
         next_free = self.olsanka_instance.find_next_free()
         #time.sleep(1)
         self.olsanka_instance.book()

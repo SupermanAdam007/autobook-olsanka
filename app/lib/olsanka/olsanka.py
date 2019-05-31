@@ -14,13 +14,13 @@ class Olsanka:
         self._browser = browser.browser_instance
         self._browser.get(url)
     
-    def login(self):
+    def login(self, username='karelkarel', password='afs)*$)!$)(XXx25)'):
         logging.info('login')
-        self._input_login_credentials()
+        self._input_login_credentials(username, password)
         self._browser.find_element_by_xpath(
             '//*[@id="webLoginForm"]/table/tbody/tr[4]/td/input[4]').click()
     
-    def _input_login_credentials(self, username='karelkarel', password='afs)*$)!$)(XXx25)'):
+    def _input_login_credentials(self, username, password):
         logging.info(f'_input_login_credentials, username: {username}')
         input_username = self._browser.find_element_by_xpath('//*[@id="username"]')
         input_username.send_keys(username)
@@ -33,6 +33,19 @@ class Olsanka:
     
     def find_next_free(self):
         logging.info('find_next_free')
+        schedules = self._get_sport_schedules()
+        for schedule in schedules:
+            schedule[0].to_csv(schedule.id, sep=';')
+    
+    def _get_sport_schedules(self):
+        schedules = self._browser.find_elements_by_class_name('schedule')
+
+        dfs_schedules = []
+        for schedule in schedules:
+            if schedule.tag_name == 'table':
+                dfs_schedules.append(
+                    self._html_table_to_dataframe(schedule.get_attribute('outerHTML')))
+        return dfs_schedules
     
     def _html_table_to_dataframe(self, html_table):
         return pd.read_html(html_table)
