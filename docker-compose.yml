@@ -1,0 +1,6 @@
+selenium-olsanka:
+    build: .
+    container_name: 'selenium-olsanka'
+    ports:
+        - 4000:4000
+    privileged: true
