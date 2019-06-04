@@ -9,3 +9,6 @@ which satisfies the conditions defined in `app/config.py`.
 installed dependencies from requirements.txt
 
 ## Config
+* if the docker-compose is used for run, make sure that you change the environment variables: `OLSANKA_USERNAME` and 
+`OLSANKA_PASSWORD` in this file
+* environment variables: `OLSANKA_USERNAME` and `OLSANKA_PASSWORD` must be specified in your system otherwise
