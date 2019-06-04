@@ -1,4 +1,5 @@
 import logging
+import time
 
 import pandas as pd
 
@@ -61,9 +62,10 @@ class ScheduleObj:
 
 class Record:
 
-    def __init__(self, kurt_id, hour_id, state: CellStates, schedule_obj: ScheduleObj):
+    def __init__(self, kurt_id, hour_id, state: CellStates, schedule_obj: ScheduleObj, cell_webelem):
         self.kurt_id = kurt_id
         self.hour_id = hour_id
+        self.cell_webelem = cell_webelem
         self.state = state
         self.schedule_obj = schedule_obj
 
@@ -71,7 +73,7 @@ class Record:
         return self.schedule_obj.schedule_time_headers[self.hour_id]
 
     @staticmethod
-    def factory(cell_id: str, state, schedule_webelem):
+    def factory(cell_id: str, state, schedule_webelem, cell_webelem):
         cell_id_splitted = cell_id.split('_')
         kurt_id = int(cell_id_splitted[3])
         hour_id = int(cell_id_splitted[4])
@@ -79,6 +81,7 @@ class Record:
         return Record(
             kurt_id=kurt_id,
             hour_id=hour_id,
+            cell_webelem=cell_webelem,
             state=state,
             schedule_obj=ScheduleObj.factory_from_webelem(schedule_webelem)
         )
@@ -127,6 +130,7 @@ class Olsanka:
                 free_records.append(Record.factory(
                     cell_id=cell_id,
                     state=cell_state,
+                    cell_webelem=schedule_cell,
                     schedule_webelem=self.get_schedule_webelem_from_cell_id(cell_id)
                 ))
 
@@ -159,5 +163,9 @@ class Olsanka:
             raise NoFreeRecord()
 
         for x in next_free:
-            logging.info(f'next_free: {x}')
+            logging.info(f'booking: {x}')
+            x.cell_webelem.click()
+            time.sleep(2)
+            self._browser.find_element_by_id('reservationForm:reservationEditFormStoreButton').click()
+            return
 
