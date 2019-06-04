@@ -3,8 +3,38 @@ import logging
 import pandas as pd
 
 from lib.browser import Browser
+from lib.img_processor import MyImage
+
 
 logging.getLogger().setLevel(logging.INFO)
+
+
+class UnknownStateFromColor(Exception):
+    pass
+
+
+class CellStates:
+    BOOKED = 'BOOKED'
+    FREE = 'FREE'
+    BANNED = 'BANNED'
+
+
+class ColorFieldStateMapping:
+    BOOKED = ['#0033CC', '#3300CC']
+    FREE = ['#FFFFFF']
+    BANNED = ['#D1D1D1']
+
+    @staticmethod
+    def get_state_from_hex_color(hex_color):
+        if hex_color in ColorFieldStateMapping.BANNED:
+            return CellStates.BANNED
+        elif hex_color in ColorFieldStateMapping.BOOKED:
+            return CellStates.BOOKED
+        elif hex_color in ColorFieldStateMapping.FREE:
+            return CellStates.FREE
+        else:
+            raise UnknownStateFromColor(f'Color: {hex_color}')
+            #logging.warn(f'do not know color: {hex_color}')
 
 
 class AlreadyBookedStyle:
@@ -16,7 +46,7 @@ class AlreadyBookedStyle:
         self.height = height
 
     def __str__(self):
-        return "left: " + self.left + ", top: " + self.top + ", width: " + self.width + ", height: " + self.height
+        return str(self.__dict__)
 
     @staticmethod
     def factory_from_event_style(event_style):
@@ -41,6 +71,37 @@ class AlreadyBookedStyle:
             already_booked_style = AlreadyBookedStyle(left, top, width, height)
 
         return already_booked_style
+
+
+class ScheduleDataField:
+
+    def __init__(self, iid, is_free=True):
+        self.iid = iid
+        self.is_free = is_free
+
+
+class Schedule:
+
+    def __init__(self, iid: str, day: str, date: str, header_times: list, data):
+        self.iid = iid
+        self.day = day
+        self.date = date
+        self.header_times = header_times
+        self.data = data
+
+    @staticmethod
+    def factory(schedule_webelement_table, already_booked_styles):
+        return Schedule(
+            iid='schedule_0',
+            day='Út',
+            date='4/6',
+            header_times=[],
+            data=[[],[]]
+
+        )
+
+    def __str__(self):
+        return str(self.__dict__)
 
 
 class Olsanka:
@@ -70,13 +131,45 @@ class Olsanka:
 
     def find_next_free(self):
         logging.info('find_next_free')
-        already_booked_styles = self._get_already_booked()
-        logging.info(already_booked_styles)
-        schedules = self._get_sport_schedules()
-        for schedule in schedules:
-            location = schedule.location
-            size = schedule.size
-            logging.info(schedule)
+        for schedule_cell in self._get_all_cells():
+            cell_img = MyImage(png_bytes=schedule_cell.screenshot_as_png)
+            hex_color = cell_img.average_colour(return_hex=True)
+            #cell_img.save_img(f'imgs/{hex_color.split("#")[1]}.png')
+
+            cell_state = ColorFieldStateMapping.get_state_from_hex_color(hex_color)
+
+            logging.info(schedule_cell.get_attribute('id') + ': ' + cell_state)
+
+            # logging.info()
+
+        # already_booked_styles = self._get_already_booked()
+        # for already_booked_style in already_booked_styles:
+        #     logging.info(already_booked_style)
+        #
+        # schedules = self._get_sport_schedules()
+        #
+        # for schedule in schedules:
+        #     schedule_cells = self._get_schedule_cells(schedule)
+        #
+        #     for schedule_cell in schedule_cells:
+        #         cell_state = ColorFieldStateMapping.get_state_from_hex_color(
+        #             MyImage(png_bytes=schedule_cell.screenshot_as_png).average_colour(return_hex=True)
+        #         )
+        #         #cell_img.save_img(f'{hex_color.split("#")[1]}.png')
+        #         # logging.info()
+
+        # for schedule in schedules:
+        #     logging.info(Schedule.factory(schedule, already_booked_styles))
+            # location = schedule.location
+            # size = schedule.size
+            # logging.info(schedule)
+
+    def _get_all_cells(self):
+        return self._browser.find_elements_by_class_name('scheduleCell')
+
+    @staticmethod
+    def _get_schedule_cells(schedule):
+        return schedule.find_elements_by_class_name('scheduleCell')
 
     def _get_already_booked(self):
         res_container = self._browser.find_element_by_id('resContainer')
@@ -90,17 +183,8 @@ class Olsanka:
         return already_booked_styles
 
     def _get_sport_schedules(self):
-        schedules = self._browser.find_elements_by_class_name('schedule')
-        return schedules
-        # dfs_schedules = []
-        # for schedule in schedules:
-        #     if schedule.tag_name == 'table':
-        #         dfs_schedules.append(
-        #             self._html_table_to_dataframe(schedule.get_attribute('outerHTML')))
-        # return dfs_schedules
+        return [x for x in self._browser.find_elements_by_class_name('schedule') if x.tag_name == 'table']
 
-    # def _html_table_to_dataframe(self, html_table):
-    #     return pd.read_html(html_table)
-
-    def book(self):
+    def book(self, next_free):
         logging.info('book')
+        logging.info(f'next_free: {next_free}')

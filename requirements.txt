@@ -1,3 +1,6 @@
 selenium==3.141.0
 pyvirtualdisplay==0.2.3
 pandas==0.24.2
+Pillow==6.0.0
+colormap==1.0.2
+easydev==0.9.37

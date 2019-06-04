@@ -3,4 +3,7 @@ selenium-olsanka:
     container_name: 'selenium-olsanka'
     ports:
         - 4000:4000
+    environment:
+        - OLSANKA_USERNAME=karelkarel
+        - OLSANKA_PASSWORD=aslfj0138401984asfasf351
     privileged: true
