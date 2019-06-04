@@ -1,6 +1,6 @@
 # AutoBook-Olsanka
 Books first free slot in badminton on web [http://olsanka.e-rezervace.cz/](http://olsanka.e-rezervace.cz/)
-which satisfies the conditions.
+which satisfies the conditions defined in `app/config.py`.
 
 ## Usage
 
