@@ -23,7 +23,6 @@ class MyImage:
     def get_average_colour(self, return_hex=True):
         img1 = self.image.resize((1, 1), Image.ANTIALIAS).convert('RGB')
         r, g, b = img1.getpixel((0, 0))
-        # logging.info(f'r: {r}, g: {g}, b: {b}')
 
         if return_hex:
             return rgb2hex(r, g, b)

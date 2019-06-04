@@ -34,7 +34,7 @@ class Flow:
 
     def _find_next_free(self):
         logging.info('_find_next_free')
-        return self.olsanka_instance.find_next_free()
+        return self.olsanka_instance.find_free_records()
 
     def _book(self, next_free):
         logging.info('_book')

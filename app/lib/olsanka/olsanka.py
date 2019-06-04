@@ -2,14 +2,17 @@ import logging
 
 import pandas as pd
 
+from config import Config
 from lib.browser import Browser
 from lib.img import MyImage
-
 
 logging.getLogger().setLevel(logging.INFO)
 
 
 class UnknownStateFromColor(Exception):
+    pass
+
+class NoFreeRecord(Exception):
     pass
 
 
@@ -33,71 +36,51 @@ class ColorFieldStateMapping:
         elif hex_color in ColorFieldStateMapping.FREE:
             return CellStates.FREE
         else:
-            raise UnknownStateFromColor(f'Color: {hex_color}')
-            #logging.warn(f'do not know color: {hex_color}')
+            #raise UnknownStateFromColor(f'Color: {hex_color}')
+            logging.warn(f'do not know color: {hex_color}')
 
 
-class AlreadyBookedStyle:
+class ScheduleObj:
 
-    def __init__(self, left, top, width, height):
-        self.left = left
-        self.top = top
-        self.width = width
-        self.height = height
+    def __init__(self, day_str, date_str, schedule_time_headers: list):
+        self.day_str = day_str
+        self.date_str = date_str
+        self.schedule_time_headers = schedule_time_headers
+
+    @staticmethod
+    def factory_from_webelem(schedule_webelem):
+        day_str = schedule_webelem.find_element_by_class_name(
+            'schedule_table_day_header_cell').text.split(' ')[0]
+        date_str = schedule_webelem.find_element_by_class_name('header_date_part').text
+        schedule_time_headers = [x.text for x in schedule_webelem.find_elements_by_class_name('scheduleTimeHeader')]
+        return ScheduleObj(day_str, date_str, schedule_time_headers)
 
     def __str__(self):
         return str(self.__dict__)
 
-    @staticmethod
-    def factory_from_event_style(event_style):
-        style_attrs = [x.strip() for x in event_style.split(';')]
-        left = top = width = height = None
 
-        for style_attr in style_attrs:
-            attr = style_attr.split(': ')
+class Record:
 
-            if len(attr) == 2:
-                if attr[0] == 'left':
-                    left = attr[1].split('px')[0]
-                if attr[0] == 'top':
-                    top = attr[1].split('px')[0]
-                if attr[0] == 'width':
-                    width = attr[1].split('px')[0]
-                if attr[0] == 'height':
-                    height = attr[1].split('px')[0]
+    def __init__(self, kurt_id, hour_id, state: CellStates, schedule_obj: ScheduleObj):
+        self.kurt_id = kurt_id
+        self.hour_id = hour_id
+        self.state = state
+        self.schedule_obj = schedule_obj
 
-        already_booked_style = None
-        if left and top and width and height:
-            already_booked_style = AlreadyBookedStyle(left, top, width, height)
-
-        return already_booked_style
-
-
-class ScheduleDataField:
-
-    def __init__(self, iid, is_free=True):
-        self.iid = iid
-        self.is_free = is_free
-
-
-class Schedule:
-
-    def __init__(self, iid: str, day: str, date: str, header_times: list, data):
-        self.iid = iid
-        self.day = day
-        self.date = date
-        self.header_times = header_times
-        self.data = data
+    def get_time_str(self):
+        return self.schedule_obj.schedule_time_headers[self.hour_id]
 
     @staticmethod
-    def factory(schedule_webelement_table, already_booked_styles):
-        return Schedule(
-            iid='schedule_0',
-            day='Út',
-            date='4/6',
-            header_times=[],
-            data=[[],[]]
+    def factory(cell_id: str, state, schedule_webelem):
+        cell_id_splitted = cell_id.split('_')
+        kurt_id = int(cell_id_splitted[3])
+        hour_id = int(cell_id_splitted[4])
 
+        return Record(
+            kurt_id=kurt_id,
+            hour_id=hour_id,
+            state=state,
+            schedule_obj=ScheduleObj.factory_from_webelem(schedule_webelem)
         )
 
     def __str__(self):
@@ -111,7 +94,7 @@ class Olsanka:
         self._browser = browser.browser_instance
         self._browser.get(url)
 
-    def login(self, username='karelkarel', password='afs)*$)!$)(XXx25)'):
+    def login(self, username='test_username', password=''):
         logging.info('login')
         self._input_login_credentials(username, password)
         self._browser.find_element_by_xpath(
@@ -129,39 +112,52 @@ class Olsanka:
             '//*[@id="cdForm:j_id251:1:serviceSelectButton"]')
         badminton_button.click()
 
-    def find_next_free(self):
+    def find_free_records(self):
         logging.info('find_next_free')
+        free_records = []
         for schedule_cell in self._get_all_cells():
             cell_img = MyImage(png_bytes=schedule_cell.screenshot_as_png)
             hex_color = cell_img.get_average_colour(return_hex=True)
             #cell_img.save_img(f'imgs/{hex_color.split("#")[1]}.png')
-
             cell_state = ColorFieldStateMapping.get_state_from_hex_color(hex_color)
 
-            logging.info(schedule_cell.get_attribute('id') + ': ' + cell_state)
+            if cell_state == CellStates.FREE:
+                logging.info(schedule_cell.get_attribute('id') + ': ' + cell_state)
+                cell_id = schedule_cell.get_attribute('id')
+                free_records.append(Record.factory(
+                    cell_id=cell_id,
+                    state=cell_state,
+                    schedule_webelem=self.get_schedule_webelem_from_cell_id(cell_id)
+                ))
 
+        return free_records
 
     def _get_all_cells(self):
         return self._browser.find_elements_by_class_name('scheduleCell')
 
-    # @staticmethod
-    # def _get_schedule_cells(schedule):
-    #     return schedule.find_elements_by_class_name('scheduleCell')
+    def filter_unwanted(self, free_records):
+        possible_days = Config.POSSIBLE_DAYS
+        possible_hours = Config.POSSIBLE_HOURS
 
-    def _get_already_booked(self):
-        res_container = self._browser.find_element_by_id('resContainer')
-        res_events = res_container.find_elements_by_class_name('event')
+        free_filtered = []
+        for free_record in free_records:
+            if free_record.get_time_str() in possible_hours \
+                    and free_record.schedule_obj.day_str in possible_days:
+                free_filtered.append(free_record)
 
-        already_booked_styles = []
-        for res_event in res_events:
-            already_booked_styles.append(AlreadyBookedStyle.factory_from_event_style(
-                res_event.get_attribute('style')))
+        return free_filtered
 
-        return already_booked_styles
-
-    def _get_sport_schedules(self):
-        return [x for x in self._browser.find_elements_by_class_name('schedule') if x.tag_name == 'table']
+    def get_schedule_webelem_from_cell_id(self, cell_id):
+        cell_id_splitted = cell_id.split('_')
+        return self._browser.find_element_by_id(f'schedule_{cell_id_splitted[1]}')
 
     def book(self, next_free):
         logging.info('book')
-        logging.info(f'next_free: {next_free}')
+
+        next_free = self.filter_unwanted(next_free)
+        if not next_free:
+            raise NoFreeRecord()
+
+        for x in next_free:
+            logging.info(f'next_free: {x}')
+
