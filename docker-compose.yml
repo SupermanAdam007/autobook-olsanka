@@ -3,5 +3,5 @@ selenium-olsanka:
     container_name: 'selenium-olsanka'
     environment:
         - OLSANKA_USERNAME=karelkarel
-        - OLSANKA_PASSWORD=aslfj0138401984asfasf351
+        - OLSANKA_PASSWORD=heslo
     privileged: true

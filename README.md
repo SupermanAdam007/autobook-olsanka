@@ -4,5 +4,8 @@ which satisfies the conditions defined in `app/config.py`.
 
 ## Usage
 
-Modify `app/config.py` file and run `docker-compose up` or `python3 main.py` if you already have 
-installed dependencies from requirements.txt.
+1. modify `app/config.py` file 
+2. run `docker-compose up` or `python3 main.py` if you already have 
+installed dependencies from requirements.txt
+
+## Config
