@@ -3,7 +3,7 @@ import logging
 import pandas as pd
 
 from lib.browser import Browser
-from lib.img_processor import MyImage
+from lib.img import MyImage
 
 
 logging.getLogger().setLevel(logging.INFO)
@@ -133,43 +133,20 @@ class Olsanka:
         logging.info('find_next_free')
         for schedule_cell in self._get_all_cells():
             cell_img = MyImage(png_bytes=schedule_cell.screenshot_as_png)
-            hex_color = cell_img.average_colour(return_hex=True)
+            hex_color = cell_img.get_average_colour(return_hex=True)
             #cell_img.save_img(f'imgs/{hex_color.split("#")[1]}.png')
 
             cell_state = ColorFieldStateMapping.get_state_from_hex_color(hex_color)
 
             logging.info(schedule_cell.get_attribute('id') + ': ' + cell_state)
 
-            # logging.info()
-
-        # already_booked_styles = self._get_already_booked()
-        # for already_booked_style in already_booked_styles:
-        #     logging.info(already_booked_style)
-        #
-        # schedules = self._get_sport_schedules()
-        #
-        # for schedule in schedules:
-        #     schedule_cells = self._get_schedule_cells(schedule)
-        #
-        #     for schedule_cell in schedule_cells:
-        #         cell_state = ColorFieldStateMapping.get_state_from_hex_color(
-        #             MyImage(png_bytes=schedule_cell.screenshot_as_png).average_colour(return_hex=True)
-        #         )
-        #         #cell_img.save_img(f'{hex_color.split("#")[1]}.png')
-        #         # logging.info()
-
-        # for schedule in schedules:
-        #     logging.info(Schedule.factory(schedule, already_booked_styles))
-            # location = schedule.location
-            # size = schedule.size
-            # logging.info(schedule)
 
     def _get_all_cells(self):
         return self._browser.find_elements_by_class_name('scheduleCell')
 
-    @staticmethod
-    def _get_schedule_cells(schedule):
-        return schedule.find_elements_by_class_name('scheduleCell')
+    # @staticmethod
+    # def _get_schedule_cells(schedule):
+    #     return schedule.find_elements_by_class_name('scheduleCell')
 
     def _get_already_booked(self):
         res_container = self._browser.find_element_by_id('resContainer')
